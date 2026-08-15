@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-ops-control-plane"
+version = "0.1.0"
+description = "Governed and auditable tool execution for AI agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Bryl Lim" }]
+keywords = ["ai-agents", "governance", "security", "audit", "policy"]
+
+[project.scripts]
+agent-ops-demo = "agent_ops.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
