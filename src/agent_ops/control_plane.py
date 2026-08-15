@@ -67,13 +67,15 @@ class Decision:
 class Approval:
     tool: str
     idempotency_key: str
+    principal: str
     approver: str
     expires_at: float
 
-    def valid_for(self, call: ToolCall, now: float) -> bool:
+    def valid_for(self, call: ToolCall, context: ActorContext, now: float) -> bool:
         return (
             self.tool == call.tool
             and self.idempotency_key == call.idempotency_key
+            and self.principal == context.principal
             and now <= self.expires_at
         )
 
@@ -183,7 +185,7 @@ class AgentControlPlane:
         self.policies = policies
         self.audit = audit or AuditLog()
         self.limiter = limiter or SlidingWindowLimiter()
-        self._results: dict[str, Any] = {}
+        self._results: dict[tuple[str, str, str], Any] = {}
 
     def execute(
         self,
@@ -193,8 +195,9 @@ class AgentControlPlane:
         now: float | None = None,
     ) -> Any:
         current = time.time() if now is None else now
-        if call.idempotency_key in self._results:
-            return self._results[call.idempotency_key]
+        operation_key = (context.principal, call.tool, call.idempotency_key)
+        if operation_key in self._results:
+            return self._results[operation_key]
         spec = self.tools.get(call.tool)
         if spec is None:
             raise ToolDenied(f"unknown tool: {call.tool}")
@@ -207,13 +210,13 @@ class AgentControlPlane:
             self.audit.append("tool.denied", context, spec, decision, call.arguments)
             raise ToolDenied(decision.reason)
         if decision.effect is Effect.REQUIRE_APPROVAL and not (
-            approval and approval.valid_for(call, current)
+            approval and approval.valid_for(call, context, current)
         ):
             self.audit.append("tool.awaiting_approval", context, spec, decision, call.arguments)
             raise ApprovalRequired(decision.reason)
         self.audit.append("tool.started", context, spec, decision, call.arguments)
         result = spec.handler(**dict(call.arguments))
-        self._results[call.idempotency_key] = result
+        self._results[operation_key] = result
         self.audit.append("tool.succeeded", context, spec, decision, call.arguments)
         return result
 

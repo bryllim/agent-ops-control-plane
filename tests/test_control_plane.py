@@ -37,9 +37,17 @@ class AgentControlPlaneTests(unittest.TestCase):
         with self.assertRaises(ApprovalRequired):
             self.plane.execute(call, context, now=100)
 
-        approval = Approval("deploy", "key-2", "on-call", expires_at=110)
+        approval = Approval("deploy", "key-2", "agent-1", "on-call", expires_at=110)
         result = self.plane.execute(call, context, approval, now=105)
         self.assertEqual(result["service"], "api")
+
+    def test_approval_cannot_be_replayed_by_another_principal(self):
+        call = ToolCall("deploy", {"service": "api"}, "key-shared")
+        approval = Approval("deploy", "key-shared", "agent-1", "on-call", expires_at=110)
+        other = ActorContext("agent-2", frozenset({"engineer"}), "production")
+
+        with self.assertRaises(ApprovalRequired):
+            self.plane.execute(call, other, approval, now=105)
 
     def test_explicit_deny_overrides(self):
         context = ActorContext("agent-2", frozenset({"intern", "engineer"}), "production")
@@ -56,6 +64,17 @@ class AgentControlPlaneTests(unittest.TestCase):
 
         self.assertEqual(first, second)
         self.assertEqual(self.calls, 1)
+
+    def test_idempotency_is_scoped_to_principal(self):
+        call = ToolCall("deploy", {"service": "api"}, "shared-key")
+        first_actor = ActorContext("agent-1", frozenset({"engineer"}), "development")
+        second_actor = ActorContext("agent-2", frozenset({"engineer"}), "development")
+
+        first = self.plane.execute(call, first_actor, now=100)
+        second = self.plane.execute(call, second_actor, now=100)
+
+        self.assertNotEqual(first["revision"], second["revision"])
+        self.assertEqual(self.calls, 2)
 
     def test_audit_redacts_sensitive_arguments(self):
         context = ActorContext("agent-1", frozenset({"engineer"}), "development")

@@ -51,8 +51,8 @@ result = plane.execute(
 |---|---|
 | Least privilege | No matching allow rule means deny |
 | Precedence | Deny overrides approval; approval overrides allow |
-| Human oversight | Approval is scoped to tool, operation key, and expiry |
-| Duplicate safety | Idempotency keys prevent repeated side effects |
+| Human oversight | Approval is scoped to principal, tool, operation key, and expiry |
+| Duplicate safety | Principal-scoped idempotency keys prevent repeated side effects |
 | Abuse control | Per-principal sliding-window rate limits |
 | Auditability | Sensitive fields are redacted and records are hash chained |
 

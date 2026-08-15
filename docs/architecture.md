@@ -6,7 +6,7 @@ Tool registration does not grant permission to use a tool. Calls need a matching
 
 ## Scoped approvals
 
-An approval is bound to a tool and idempotency key with an expiry. This prevents a human approval for one operation from becoming a reusable bearer credential.
+An approval is bound to a principal, tool, and idempotency key with an expiry. This prevents a human approval for one operation from becoming a reusable bearer credential or being replayed by another agent.
 
 ## Tamper evidence
 
